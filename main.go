@@ -5,15 +5,67 @@
 package main
 
 import (
+	"encoding/json"
+	"errors"
+	"fmt"
 	"log"
 	"os"
 	"runtime"
 
+	"github.com/aws/aws-sdk-go/aws"
+	"github.com/aws/aws-sdk-go/aws/credentials"
+	"github.com/aws/aws-sdk-go/aws/session"
+	"github.com/aws/aws-sdk-go/service/ec2"
 	"github.com/nats-io/nats"
 )
 
 var nc *nats.Conn
 var natsErr error
+
+func processEvent(data []byte) (*Event, error) {
+	var ev Event
+	err := json.Unmarshal(data, &ev)
+	return &ev, err
+}
+
+func eventHandler(m *nats.Msg) {
+	i, err := processEvent(m.Data)
+	if err != nil {
+		nc.Publish("instance.delete.aws.error", m.Data)
+		return
+	}
+
+	if i.Valid() == false {
+		i.Error(errors.New("Instance is invalid"))
+		return
+	}
+
+	err = deleteInstance(i)
+	if err != nil {
+		i.Error(err)
+		return
+	}
+
+	i.Complete()
+}
+
+func deleteInstance(ev *Event) error {
+	creds := credentials.NewStaticCredentials(ev.DatacenterAccessKey, ev.DatacenterAccessToken, "")
+	svc := ec2.New(session.New(), &aws.Config{
+		Region:      aws.String(ev.DatacenterRegion),
+		Credentials: creds,
+	})
+
+	var req ec2.TerminateInstancesInput
+	req.InstanceIds = append(req.InstanceIds, aws.String(ev.InstanceAWSID))
+
+	_, err := svc.TerminateInstances(&req)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
 
 func main() {
 	natsURI := os.Getenv("NATS_URI")
@@ -26,11 +78,8 @@ func main() {
 		log.Fatal(natsErr)
 	}
 
-	nc.Subscribe("instance.delete.aws", notImplemented)
+	fmt.Println("listening for instance.delete.aws")
+	nc.Subscribe("instance.delete.aws", eventHandler)
 
 	runtime.Goexit()
-}
-
-func notImplemented(m *nats.Msg) {
-	nc.Publish("instance.delete.aws.error", []byte(`{"error":"not implemented"}`))
 }
