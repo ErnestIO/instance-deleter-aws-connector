@@ -49,10 +49,20 @@ func deleteInstance(ev *Event) error {
 		Credentials: creds,
 	})
 
-	var req ec2.TerminateInstancesInput
-	req.InstanceIds = append(req.InstanceIds, aws.String(ev.InstanceAWSID))
+	req := ec2.TerminateInstancesInput{
+		InstanceIds: []*string{aws.String(ev.InstanceAWSID)},
+	}
 
 	_, err := svc.TerminateInstances(&req)
+	if err != nil {
+		return err
+	}
+
+	termreq := ec2.DescribeInstancesInput{
+		InstanceIds: []*string{aws.String(ev.InstanceAWSID)},
+	}
+
+	err = svc.WaitUntilInstanceTerminated(&termreq)
 	if err != nil {
 		return err
 	}
