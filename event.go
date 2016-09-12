@@ -54,10 +54,6 @@ func (ev *Event) Validate() error {
 		return ErrDatacenterCredentialsInvalid
 	}
 
-	if ev.NetworkAWSID == "" {
-		return ErrNetworkInvalid
-	}
-
 	if ev.InstanceAWSID == "" {
 		return ErrInstanceAWSIDInvalid
 	}
