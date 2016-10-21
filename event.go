@@ -33,10 +33,10 @@ type Event struct {
 	NetworkAWSID          string   `json:"network_aws_id"`
 	SecurityGroupAWSIDs   []string `json:"security_group_aws_ids"`
 	InstanceAWSID         string   `json:"instance_aws_id,omitempty"`
-	InstanceName          string   `json:"instance_name"`
-	InstanceImage         string   `json:"instance_image"`
+	Name                  string   `json:"name"`
+	Image                 string   `json:"image"`
 	InstanceType          string   `json:"instance_type"`
-	InstanceKeyPair       string   `json:"instance_key_pair"`
+	KeyPair               string   `json:"key_pair"`
 	ErrorMessage          string   `json:"error,omitempty"`
 }
 
@@ -58,11 +58,11 @@ func (ev *Event) Validate() error {
 		return ErrInstanceAWSIDInvalid
 	}
 
-	if ev.InstanceName == "" {
+	if ev.Name == "" {
 		return ErrInstanceNameInvalid
 	}
 
-	if ev.InstanceImage == "" {
+	if ev.Image == "" {
 		return ErrInstanceImageInvalid
 	}
 
